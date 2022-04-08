@@ -7,10 +7,10 @@ app1 = Flask(__name__)
 
 con = sqlite3.connect("bookmngsys.db",check_same_thread=False)
 
-listOfTables = con.execute("SELECT name from sqlite_master WHERE type='table' AND name='BOOKS' ").fetchall()
+listOfTables1 = con.execute("SELECT name from sqlite_master WHERE type='table' AND name='BOOKS' ").fetchall()
 
-if listOfTables!=[]:
-    print("Table Already Exists ! ")
+if listOfTables1!=[]:
+    print("Table 1 Exists ! ")
 
 else:
     con.execute(''' CREATE TABLE BOOKS(
@@ -22,15 +22,30 @@ else:
     PUBLISHER TEXT); ''')
     print("Table has created")
 
+listOfTables2 = con.execute("SELECT name from sqlite_master WHERE type='table' AND name='USERBOOKS' ").fetchall()
+
+if listOfTables2!=[]:
+    print("Table 2 Exists ! ")
+
+else:
+    con.execute(''' CREATE TABLE USERBOOKS(
+    ID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UNAME TEXT,
+    UMOBNO TEXT,
+    UEMAIL TEXT,
+    UADDRESS TEXT,
+    UPASSWORD TEXT); ''')
+    print("Table has created")
+
+cur2 = con.cursor()
+cur2.execute("SELECT UEMAIL,UPASSWORD FROM USERBOOKS")
+res2 = cur2.fetchall()
+print(res2)
+
 
 @app1.route("/")
 def home():
     return render_template("home.html")
-
-
-@app1.route("/userreg")
-def reg():
-    return render_template("regis.html")
 
 
 @app1.route("/adminlogin", methods=["GET", "POST"])
@@ -45,6 +60,29 @@ def login():
     return render_template("login.html")
 
 
+@app1.route("/bookentry", methods=["GET", "POST"])
+def entry():
+    if request.method == "POST":
+        getBookName = request.form["name"]
+        getAuthor = request.form["author"]
+        getCategory = request.form["cat"]
+        getPrice = request.form["price"]
+        getPublisher = request.form["pub"]
+        print(getBookName)
+        print(getAuthor)
+        print(getCategory)
+        print(getPrice)
+        print(getPublisher)
+        try:
+            con.execute("INSERT INTO BOOKS(BOOKNAME,AUTHOR,CATEGORY,PRICE,PUBLISHER) VALUES('"+getBookName+"','"+getAuthor+"','"+getCategory+"','" +getPrice+"','"+getPublisher+"')")
+            print("successfully inserted !")
+            con.commit()
+            return redirect("/viewall")
+        except Exception as e:
+            print(e)
+    return render_template("bookentry.html")
+
+
 @app1.route("/search", methods=["GET", "POST"])
 def search():
     if request.method == "POST":
@@ -52,7 +90,7 @@ def search():
         cur2 = con.cursor()
         cur2.execute("SELECT * FROM BOOKS WHERE BOOKNAME = '"+getBOOKName+"' ")
         res2 = cur2.fetchall()
-        return render_template("searchview.html", books2=res2)
+        return render_template("viewall.html", bookss=res2)
     return render_template("search.html")
 
 
@@ -96,27 +134,55 @@ def cardview():
     return render_template("cardview.html", books3=res6)
 
 
-@app1.route("/bookentry", methods=["GET", "POST"])
-def entry():
+@app1.route("/userreg", methods=["GET", "POST"])
+def reg():
     if request.method == "POST":
-        getBookName = request.form["name"]
-        getAuthor = request.form["author"]
-        getCategory = request.form["cat"]
-        getPrice = request.form["price"]
-        getPublisher = request.form["pub"]
-        print(getBookName)
-        print(getAuthor)
-        print(getCategory)
-        print(getPrice)
-        print(getPublisher)
-        try:
-            con.execute("INSERT INTO BOOKS(BOOKNAME,AUTHOR,CATEGORY,PRICE,PUBLISHER) VALUES('"+getBookName+"','"+getAuthor+"','"+getCategory+"','" +getPrice+"','"+getPublisher+"')")
-            print("successfully inserted !")
-            con.commit()
-            return redirect("/viewall")
-        except Exception as e:
-            print(e)
-    return render_template("bookentry.html")
+        getUName = request.form["usname"]
+        getUmobno = request.form["mobileno"]
+        getEmail = request.form["email"]
+        getAdd = request.form["address"]
+        getPass = request.form["pass"]
+        con.execute("INSERT INTO USERBOOKS(UNAME,UMOBNO,UEMAIL,UADDRESS,UPASSWORD) VALUES('" + getUName + "','" + getUmobno + "','" + getEmail + "','" + getAdd + "','" + getPass + "')")
+        print("successfully inserted !")
+        con.commit()
+        return redirect("/userlogin")
+    return render_template("regis.html")
+
+
+@app1.route("/userview")
+def usview():
+    cur = con.cursor()
+    cur.execute("SELECT * FROM BOOKS")
+    res = cur.fetchall()
+    return render_template("userview.html", bookss=res)
+
+
+@app1.route("/userlogin", methods=["GET", "POST"])
+def ulog():
+    if request.method == "POST":
+        getuseremail = request.form["Uname"]
+        getuserpass = request.form["Upass"]
+        print(getuseremail)
+        print(getuserpass)
+        cur2 = con.cursor()
+        cur2.execute("SELECT UEMAIL,UPASSWORD FROM USERBOOKS")
+        res2 = cur2.fetchall()
+        for i in res2:
+            if i[0] == getuseremail:
+                if i[1] == getuserpass:
+                    return redirect("/userview")
+    return render_template("userlogin.html")
+
+
+@app1.route("/usersearch", methods=["GET", "POST"])
+def ussearch():
+    if request.method == "POST":
+        getBOOKName = request.form["ubname"]
+        cur2 = con.cursor()
+        cur2.execute("SELECT * FROM BOOKS WHERE BOOKNAME = '"+getBOOKName+"' ")
+        res2 = cur2.fetchall()
+        return render_template("userview.html", bookss=res2)
+    return render_template("usersearch.html")
 
 
 if __name__ == "__main__":
