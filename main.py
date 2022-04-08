@@ -1,9 +1,14 @@
-from flask import Flask, render_template,request
+from flask import Flask, render_template,request,session
+from flask_session import Session
+
 import sqlite3
 
 from werkzeug.utils import redirect
 
 app1 = Flask(__name__)
+app1.config["SESSION_PERMANENT"] = False
+app1.config["SESSION_TYPE"] = "filesystem"
+Session(app1)
 
 con = sqlite3.connect("bookmngsys.db",check_same_thread=False)
 
@@ -151,10 +156,13 @@ def reg():
 
 @app1.route("/userview")
 def usview():
-    cur = con.cursor()
-    cur.execute("SELECT * FROM BOOKS")
-    res = cur.fetchall()
-    return render_template("userview.html", bookss=res)
+    if not session.get("name"):
+        return redirect("/userlogin")
+    else:
+        cur = con.cursor()
+        cur.execute("SELECT * FROM BOOKS")
+        res = cur.fetchall()
+        return render_template("userview.html", bookss=res)
 
 
 @app1.route("/userlogin", methods=["GET", "POST"])
@@ -165,24 +173,42 @@ def ulog():
         print(getuseremail)
         print(getuserpass)
         cur2 = con.cursor()
-        cur2.execute("SELECT UEMAIL,UPASSWORD FROM USERBOOKS")
+        cur2.execute("SELECT * FROM USERBOOKS WHERE UEMAIL = '"+getuseremail+"' AND UPASSWORD = '"+getuserpass+"'")
         res2 = cur2.fetchall()
-        for i in res2:
-            if i[0] == getuseremail:
-                if i[1] == getuserpass:
-                    return redirect("/userview")
+        if len(res2) > 0:
+            for i in res2:
+                getName = i[1]
+                getid = i[0]
+
+            session["name"] = getName
+            session["id"] = getid
+
+            return redirect("/userview")
     return render_template("userlogin.html")
 
 
 @app1.route("/usersearch", methods=["GET", "POST"])
 def ussearch():
-    if request.method == "POST":
-        getBOOKName = request.form["ubname"]
-        cur2 = con.cursor()
-        cur2.execute("SELECT * FROM BOOKS WHERE BOOKNAME = '"+getBOOKName+"' ")
-        res2 = cur2.fetchall()
-        return render_template("userview.html", bookss=res2)
-    return render_template("usersearch.html")
+    if not session.get("name"):
+        return redirect("/userlogin")
+    else:
+        if request.method == "POST":
+            getBOOKName = request.form["ubname"]
+            cur2 = con.cursor()
+            cur2.execute("SELECT * FROM BOOKS WHERE BOOKNAME = '" + getBOOKName + "' ")
+            res2 = cur2.fetchall()
+            return render_template("userview.html", bookss=res2)
+        return render_template("usersearch.html")
+
+
+@app1.route("/userlogout", methods=["GET", "POST"])
+def uslogout():
+
+    if not session.get("name"):
+        return redirect("/userlogin")
+    else:
+        session["name"] = None
+        return redirect("/")
 
 
 if __name__ == "__main__":
